@@ -15,4 +15,23 @@ class User(AbstractUser):
         default='student'
     )
 
+class StudentProfile(models.Model):
+    user = models.OneToOneField(
+        User,
+        on_delete=models.CASCADE
+    )
+
+    hostel = models.ForeignKey(
+        'hostels.Hostel',
+        on_delete=models.CASCADE
+    )
+
+    room = models.ForeignKey(
+        'hostels.Room',
+        on_delete=models.CASCADE
+    )
+
+    def __str__(self):
+        return self.user.username
+
 
