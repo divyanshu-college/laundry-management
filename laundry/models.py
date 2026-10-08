@@ -31,10 +31,7 @@ class LaundryBooking(models.Model):
     booking_date = models.DateTimeField(auto_now_add=True)
 
     total_clothes = models.PositiveIntegerField(
-        validators=[
-            MinValueValidator(1),
-            MaxValueValidator(7)
-        ]
+        default=0
     )
 
     status = models.CharField(
@@ -114,19 +111,51 @@ class LaundryItem(models.Model):
         default=1
     )
 
-def clean(self):
+    def clean(self):
 
-    total_quantity = self.booking.items.exclude(
-        id=self.id
-    ).aggregate(
-        total=models.Sum('quantity')
-    )['total'] or 0
+        total_quantity = self.booking.items.exclude(
+            id=self.id
+        ).aggregate(
+            total=models.Sum('quantity')
+        )['total'] or 0
 
-    total_quantity += self.quantity
+        total_quantity += self.quantity
 
-    if total_quantity > 7:
-        raise ValidationError(
-            "Maximum 7 clothes are allowed in one laundry booking."
+        if total_quantity > 7:
+            raise ValidationError(
+                "Maximum 7 clothes are allowed in one laundry booking."
+            )
+
+    def save(self, *args, **kwargs):
+
+        self.full_clean()
+
+        super().save(*args, **kwargs)
+
+        total = self.booking.items.aggregate(
+            total=models.Sum('quantity')
+        )['total'] or 0
+
+        self.booking.total_clothes = total
+
+        self.booking.save(
+            update_fields=['total_clothes']
+        )
+
+    def delete(self, *args, **kwargs):
+
+        booking = self.booking
+
+        super().delete(*args, **kwargs)
+
+        total = booking.items.aggregate(
+            total=models.Sum('quantity')
+        )['total'] or 0
+
+        booking.total_clothes = total
+
+        booking.save(
+            update_fields=['total_clothes']
         )
 
     def __str__(self):
